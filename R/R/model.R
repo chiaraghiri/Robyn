@@ -379,7 +379,8 @@ robyn_mmm <- function(hyper_collect,
             channelBound <- unlist(hyper_bound_list_updated[hypNameLoop])
             hyppar_for_qunif <- nevergrad_hp_val[[co]][index]
             hyppar_scaled <- qunif(hyppar_for_qunif, min(channelBound), max(channelBound))
-            hypParamSamNG[hypNameLoop] <- hyppar_scaled
+            #hypParamSamNG[hypNameLoop] <- hyppar_scaled
+            hypParamSamNG[which(hyper_bound_list_updated_name==hypNameLoop)] <- hyppar_scaled
           }
           hypParamSamList[[co]] <- transpose(data.table(hypParamSamNG))
         }
@@ -534,7 +535,8 @@ robyn_mmm <- function(hyper_collect,
           nrmse <- mod_out$nrmse_train
           mape <- 0
           df.int <- mod_out$df.int
-
+          AIC_index <- mod_out$AIC_id
+         # cat('AIC calcolato',AIC_index[[1]],AIC_index[[2]])
 
           #####################################
           #### get calibration mape
@@ -583,9 +585,10 @@ robyn_mmm <- function(hyper_collect,
           #### Collect output
 
           resultHypParam <- data.table()[, (hypParamSamName) := lapply(hypParamSam[1:length(hypParamSamName)], function(x) x)]
-
+          resultHypParam$AIC_id <- AIC_index[[1]]
+          resultHypParam$AICc_id <- AIC_index[[2]]
           resultCollect <- list(
-            resultHypParam = resultHypParam[, ":="(
+              resultHypParam = resultHypParam[, ":="(
               mape = mape,
               nrmse = nrmse,
               decomp.rssd = decomp.rssd
@@ -599,7 +602,9 @@ robyn_mmm <- function(hyper_collect,
               ElapsedAccum = as.numeric(difftime(Sys.time(), t0, units = "secs")),
               iterPar = i,
               iterNG = lng,
-              df.int = df.int)],
+              df.int = df.int
+              #aic_id=AIC_id,aicc_id=AICc_id
+              )],
             xDecompVec = if (hyper_fixed == TRUE) {
               decompCollect$xDecompVec[, ":="(
                 intercept = decompCollect$xDecompAgg[rn == "(Intercept)", xDecompAgg],
@@ -626,7 +631,8 @@ robyn_mmm <- function(hyper_collect,
               , lambda = lambda,
               iterPar = i,
               iterNG = lng,
-              df.int = df.int)],
+              df.int = df.int
+             )],
             liftCalibration = if (!is.null(calibration_input)) {
               liftCollect[, ":="(
                 mape = mape,
@@ -657,7 +663,9 @@ robyn_mmm <- function(hyper_collect,
             decomp.rssd = decomp.rssd,
             iterPar = i,
             iterNG = lng,
-            df.int = df.int
+            df.int = df.int,
+            AIC_id =AIC_index[[1]],
+            AICc_id=AIC_index[[2]]
             # ,cvmod = cvmod
           )
 
@@ -673,6 +681,8 @@ robyn_mmm <- function(hyper_collect,
       nrmse.collect <- sapply(doparCollect, function(x) x$nrmse)
       decomp.rssd.collect <- sapply(doparCollect, function(x) x$decomp.rssd)
       mape.lift.collect <- sapply(doparCollect, function(x) x$mape.lift)
+      #aic.collect <- sapply(doparCollect, function(x) x$AIC_id)
+      #aicc.collect <- sapply(doparCollect, function(x) x$AICc_id)
 
       #####################################
       #### Nevergrad tells objectives
@@ -744,7 +754,7 @@ robyn_mmm <- function(hyper_collect,
     resultCollect = resultCollect,
     hyperBoundNG = hyper_bound_list_updated,
     hyperBoundFixed = hyper_bound_list_fixed
-  ))
+    ))
 }
 
 ####################################################################
@@ -1124,6 +1134,8 @@ model_refit <- function(x_train, y_train, lambda, lower.limits, upper.limits, in
   rsq_train <- get_rsq(true = y_train, predicted = y_trainPred, p = ncol(x_train), df.int = df.int)
   rsq_train
 
+  AIC_id <- compute_AIC(mod)
+
   # y_testPred <- predict(mod, s = lambda, newx = x_test)
   # rsq_test <- get_rsq(true = y_test, predicted = y_testPred); rsq_test
 
@@ -1145,7 +1157,8 @@ model_refit <- function(x_train, y_train, lambda, lower.limits, upper.limits, in
     , coefs = coefs,
     y_pred = y_trainPred,
     mod = mod,
-    df.int = df.int
+    df.int = df.int,
+    AIC_id= AIC_id
   )
 
   return(mod_out)

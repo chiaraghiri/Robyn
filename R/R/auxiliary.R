@@ -42,3 +42,17 @@ robyn_palette <- function() {
     colour = rep("#000000", 24)
   )
 }
+
+#calculate AIC and AICc
+compute_AIC<-function(model_fit){
+  #tll <- (1-fit1$dev.ratio)*fit1$nulldev
+  tLL <- - deviance(model_fit)
+  k <- model_fit$df
+  n <- model_fit$nobs
+  AICc <- -tLL+2*k+2*k*(k+1)/(n-k-1)
+  AICc
+
+  AIC<- -tLL+2*k
+  return(list(AIC=AIC,AICc=AICc))
+}
+
